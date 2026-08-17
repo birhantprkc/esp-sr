@@ -73,9 +73,22 @@ menu "Load Multiple Wake Words (WakeNet9s)"
 
 endmenu
 
-menu "Load Multiple Wake Words (WakeNet9)"
-    depends on IDF_TARGET_ESP32S3 ||  IDF_TARGET_ESP32P4 ||  IDF_TARGET_ESP32S31 || IDF_TARGET_ESP32
+menu "Load Multiple Wake Words (WakeNet9 or WakeNet10)"
+    depends on IDF_TARGET_ESP32S3 ||  IDF_TARGET_ESP32P4 ||  IDF_TARGET_ESP32S31
 
+    config SR_WN_WN10_HILEXIN
+    bool "Hi,乐鑫 (wn10_hilexin)"
+    default n
+
+    config SR_WN_WN10_XIAOAITONGXUE
+    bool "小爱同学 (wn10_xiaoaittongxue)"
+    default n
+
+    config SR_WN_WN10_NIHAOXIAOZHI
+    bool "你好小智 (wn10_nihaoxiaozhi)"
+    default n
+
+    config SR_WN_WN10L_JA_KONNICHIHAESP_TTS3
     config SR_WN_WN9_HILEXIN
     bool "Hi,乐鑫 (wn9_hilexin)"
     default n
@@ -2385,7 +2398,12 @@ config EN_SPEECH_COMMAND_ID199
 endmenu
 
 config ESP_SR_EXTERNAL_MODEL_PATH
-string "Load models from external path"
-default ""
+    string "Load models from external path"
+    default ""
+    help
+        Path to an external directory containing one or more model folders.
+        Models can be loaded from any filesystem location. Each model folder
+        must contain a valid _MODEL_INFO_ file and the required model data.
+        The selected models are automatically packaged during the build.
 
 endmenu
