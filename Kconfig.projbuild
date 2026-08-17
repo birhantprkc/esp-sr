@@ -88,7 +88,6 @@ menu "Load Multiple Wake Words (WakeNet9 or WakeNet10)"
     bool "你好小智 (wn10_nihaoxiaozhi)"
     default n
 
-    config SR_WN_WN10L_JA_KONNICHIHAESP_TTS3
     config SR_WN_WN9_HILEXIN
     bool "Hi,乐鑫 (wn9_hilexin)"
     default n
