@@ -100,7 +100,7 @@ The header file is :project_file:`include/esp32p4/esp_doa_capon_embedded.h`.
 Accuracy Evaluation
 -------------------
 
-The test application ``test_apps/esp-sr-doa-accuracy`` evaluates the DOA estimation accuracy on chip. The test dataset is a simulated 4-mic uniform circular array (radius 5 cm) with clean speech; the sound source is placed on a 2 m circle at angles 0° to 330° in 30° steps (counter-clockwise from the +x axis).
+The test application ``test_apps/esp-sr-gsc-doa`` evaluates the DOA estimation accuracy on chip. The test dataset is a simulated 4-mic uniform circular array (radius 5 cm) with clean speech; the sound source is placed on a 2 m circle at angles 0° to 330° in 30° steps (counter-clockwise from the +x axis).
 
 Test method:
 

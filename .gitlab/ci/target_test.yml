@@ -100,7 +100,7 @@ test_esp_sr_gsc_doa:
   tags:
     - ${TEST_ENV}
   variables:
-    TEST_FOLDER: "./test_apps/esp-sr-doa-accuracy"
+    TEST_FOLDER: "./test_apps/esp-sr-gsc-doa"
 
 test_esp_tts:
   extends:

@@ -76,7 +76,7 @@ build_esp_sr_gsc_doa:
           - espressif/idf:release-v5.5
           - espressif/idf:release-v6.0
   variables:
-    EXAMPLES_PATH: "test_apps/esp-sr-doa-accuracy"
+    EXAMPLES_PATH: "test_apps/esp-sr-gsc-doa"
 
 build_esp32s31_wakenet:
   extends: .build_esp32s31_template
