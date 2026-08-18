@@ -83,6 +83,25 @@ test_esp_sr_afe:
   variables:
     TEST_FOLDER: "./test_apps/esp-sr-afe"
 
+test_esp_sr_gsc_doa:
+  extends:
+    - .pytest_template
+    - .rules:build:test_esp_sr
+  needs:
+    - job: build_esp_sr_gsc_doa
+      artifacts: true
+      optional: true
+  parallel:
+    matrix:
+      - IMAGE: "espressif/idf:release-v5.5"
+        IDF_VERSION: "5.5"
+        TEST_TARGET: esp32p4
+        TEST_ENV: esp32p4
+  tags:
+    - ${TEST_ENV}
+  variables:
+    TEST_FOLDER: "./test_apps/esp-sr-doa-accuracy"
+
 test_esp_tts:
   extends:
     - .pytest_template

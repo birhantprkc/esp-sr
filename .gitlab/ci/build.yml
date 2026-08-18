@@ -66,6 +66,18 @@ build_esp_sr_afe:
   variables:
     EXAMPLES_PATH: "test_apps/esp-sr-afe"
 
+build_esp_sr_gsc_doa:
+  extends:
+    - .build_test_template
+    - .rules:build:test_esp_sr
+  parallel:
+    matrix:
+      - IMAGE:
+          - espressif/idf:release-v5.5
+          - espressif/idf:release-v6.0
+  variables:
+    EXAMPLES_PATH: "test_apps/esp-sr-doa-accuracy"
+
 build_esp32s31_wakenet:
   extends: .build_esp32s31_template
   variables:
