@@ -99,7 +99,7 @@ ESP-SR DOA（Direction of Arrival，声源定向）模块用于估计声源相�
 --------
 
 - 在 ESP32-P4 上，DOA 内部缓冲区（内存池，4 麦约 200 KB）默认分配在 PSRAM 中。
-- 如需改用内部 RAM，可在包含 ``esp_doa_capon_embedded.h`` 之前定义 ``ESP_DOA_DISABLE_PSRAM``（或作为编译选项定义）。
+- 如需改用内部 RAM，可在包含 ``esp_doa_capon_embedded.h`` 之前定义 ``ESP_DOA_DISABLE_PSRAM``，或将其作为编译选项定义。
 
 精度测试
 --------
