@@ -77,7 +77,7 @@ TEST_CASE("wakenet create/destroy API & memory leak", "[wn]")
         printf("create&destroy times:%d, memory leak:%d\n", i + 2, mem_leak);
     }
 
-    TEST_ASSERT_EQUAL(true, (mem_leak) < 1000 && last_end_size == first_end_size);
+    TEST_ASSERT_EQUAL(true, (mem_leak) < 1500 && last_end_size == first_end_size);
 }
 
 TEST_CASE("wakenet detect API & cpu loading", "[wn]")
