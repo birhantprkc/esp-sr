@@ -104,34 +104,24 @@ The test application ``test_apps/esp-sr-gsc-stream`` evaluates the GSC enhanceme
 
 - The host streams multi-channel noisy mixture WAV files to the chip frame by frame over the USB-serial-JTAG console (binary lockstep protocol).
 - The chip beamforms each frame with ``esp_gsc_process()`` (steered to the known target direction) and sends the mono output back.
-- The host computes the SI-SDR (Scale-Invariant Signal-to-Distortion Ratio) of both the input mixture and the beamformed output against the clean target reference, and reports the SI-SDR improvement. The first 125 frames (1 s) are excluded from the metrics to let the adaptive filters converge.
+- The host computes the SNR (Signal-to-Noise Ratio) of both the input mixture and the beamformed output against the clean target reference, and reports the SNR improvement. The first 125 frames (1 s) are excluded from the metrics to let the adaptive filters converge.
 
 Test results:
 
 .. list-table::
    :header-rows: 1
-   :widths: 25 25 25 25
+   :widths: 50 50
 
    * - SNR
-     - Input SI-SDR (dB)
-     - Output SI-SDR (dB)
      - Improvement (dB)
    * - -5 dB
-     - TBD
-     - TBD
-     - TBD
+     - +13.3
    * - 0 dB
-     - TBD
-     - TBD
-     - TBD
+     - +12.1
    * - +5 dB
-     - TBD
-     - TBD
-     - TBD
+     - +10.6
    * - Overall
-     - TBD
-     - TBD
-     - TBD
+     - +12.0
 
 Resource Consumption
 --------------------
@@ -159,4 +149,5 @@ The following table shows typical resource usage and performance data (16 kHz sa
 
       - Frame length is 8 ms (128 samples per channel at 16 kHz).
       - Test setting: ESP32-P4 @ 400 MHz, HEX PSRAM @ 250 MHz, 4-mic uniform circular array (radius 5 cm).
+      - If all buffers are placed in internal RAM (by defining the compile option ``GSC_P4_INTERNAL_RAM``), the CPU usage is 18.2%.
       - Actual resource consumption may vary slightly depending on the number of microphones, compiler optimization level, and specific configuration.

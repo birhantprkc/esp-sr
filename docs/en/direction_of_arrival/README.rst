@@ -118,10 +118,10 @@ Test results:
      - Result
      - Note
    * - Exact match rate
-     - 100.0% (648/648)
+     - 94.0% (609/648)
      - Estimated angle equals the true angle
    * - Accuracy within ±10°
-     - 100.0% (648/648)
+     - 94.0% (609/648)
      - Error within one grid step
 
 Resource Consumption
