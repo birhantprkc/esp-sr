@@ -47,9 +47,9 @@ static PlaneCoord g_mic_coords[MIC_NUM] = {
  * For a plane wave arriving from direction phi, the microphone at
  * coordinate p_i receives the signal advanced by tau_i =
  * (x_i*cos(phi) + y_i*sin(phi)) / c relative to the array origin.
- * Fills both the interleaved layout (for DOA) and the planar layout (for GSC).
+ * Fills the planar layout used by both DOA and GSC.
  */
-static void gen_frame(int frame_idx, int16_t *planar, int16_t *inter)
+static void gen_frame(int frame_idx, int16_t *planar)
 {
     float phi = SOURCE_ANGLE_DEG * (float)M_PI / 180.0f;
     for (int ch = 0; ch < MIC_NUM; ch++) {
@@ -58,7 +58,6 @@ static void gen_frame(int frame_idx, int16_t *planar, int16_t *inter)
             float t = (float)(frame_idx * FRAME_LEN + n) / SAMPLE_RATE;
             int16_t v = (int16_t)lrintf(10000.0f * sinf(2.0f * (float)M_PI * SIGNAL_FREQ * (t + tau)));
             planar[ch * FRAME_LEN + n] = v;
-            inter[n * MIC_NUM + ch] = v;
         }
     }
 }
@@ -117,11 +116,8 @@ TEST_CASE("doa create/destroy API & memory leak", "[gsc_doa]")
     int start_size = heap_caps_get_free_size(MALLOC_CAP_8BIT);
     int start_internal_size = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
 
-    size_t mem_size = esp_doa_capon_embedded_get_mem_size(MIC_NUM);
-    void *mem_pool = heap_caps_malloc(mem_size, MALLOC_CAP_SPIRAM);
-    TEST_ASSERT_NOT_NULL(mem_pool);
     esp_doa_capon_embedded_handle_t *doa =
-        esp_doa_capon_embedded_create(mem_pool, mem_size, g_mic_coords, MIC_NUM);
+        esp_doa_capon_embedded_create(g_mic_coords, MIC_NUM);
     TEST_ASSERT_NOT_NULL(doa);
 
     // test memory consumption
@@ -129,7 +125,6 @@ TEST_CASE("doa create/destroy API & memory leak", "[gsc_doa]")
     int create_internal_size = start_internal_size - heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
     printf("Internal RAM: %d, PSRAM: %d\n", create_internal_size, create_size - create_internal_size);
     esp_doa_capon_embedded_destroy(doa);
-    heap_caps_free(mem_pool);
 
     // test memory leak
     int first_end_size = heap_caps_get_free_size(MALLOC_CAP_8BIT);
@@ -139,14 +134,11 @@ TEST_CASE("doa create/destroy API & memory leak", "[gsc_doa]")
 
     for (int i = 0; i < 6; i++) {
         printf("create ...\n");
-        mem_pool = heap_caps_malloc(mem_size, MALLOC_CAP_SPIRAM);
-        TEST_ASSERT_NOT_NULL(mem_pool);
-        doa = esp_doa_capon_embedded_create(mem_pool, mem_size, g_mic_coords, MIC_NUM);
+        doa = esp_doa_capon_embedded_create(g_mic_coords, MIC_NUM);
         TEST_ASSERT_NOT_NULL(doa);
 
         printf("destroy ...\n");
         esp_doa_capon_embedded_destroy(doa);
-        heap_caps_free(mem_pool);
 
         last_end_size = heap_caps_get_free_size(MALLOC_CAP_8BIT);
         mem_leak = start_size - last_end_size;
@@ -160,29 +152,24 @@ TEST_CASE("gsc and doa process API & cpu loading", "[gsc_doa]")
 {
     vTaskDelay(500 / portTICK_PERIOD_MS);
 
-    size_t mem_size = esp_doa_capon_embedded_get_mem_size(MIC_NUM);
-    void *mem_pool = heap_caps_malloc(mem_size, MALLOC_CAP_SPIRAM);
-    TEST_ASSERT_NOT_NULL(mem_pool);
     esp_doa_capon_embedded_handle_t *doa =
-        esp_doa_capon_embedded_create(mem_pool, mem_size, g_mic_coords, MIC_NUM);
+        esp_doa_capon_embedded_create(g_mic_coords, MIC_NUM);
     TEST_ASSERT_NOT_NULL(doa);
     gsc_handle_t *gsc = esp_gsc_create(g_mic_coords, MIC_NUM);
     TEST_ASSERT_NOT_NULL(gsc);
 
     int16_t *planar = (int16_t *)heap_caps_malloc(FRAME_LEN * MIC_NUM * sizeof(int16_t), MALLOC_CAP_8BIT);
-    int16_t *inter = (int16_t *)heap_caps_malloc(FRAME_LEN * MIC_NUM * sizeof(int16_t), MALLOC_CAP_8BIT);
     int16_t *out = (int16_t *)heap_caps_malloc(FRAME_LEN * sizeof(int16_t), MALLOC_CAP_8BIT);
     TEST_ASSERT_NOT_NULL(planar);
-    TEST_ASSERT_NOT_NULL(inter);
     TEST_ASSERT_NOT_NULL(out);
 
     float angle = -1.0f;
     int64_t out_energy = 0;
     int64_t doa_us = 0, gsc_us = 0;
     for (int f = 0; f < PROCESS_FRAMES; f++) {
-        gen_frame(f, planar, inter);
+        gen_frame(f, planar);
         int64_t t0 = esp_timer_get_time();
-        angle = esp_doa_capon_embedded_process(doa, inter, 1);
+        angle = esp_doa_capon_embedded_process(doa, planar, 1);
         int64_t t1 = esp_timer_get_time();
         esp_gsc_process(gsc, planar, angle, out);
         doa_us += t1 - t0;
@@ -205,9 +192,7 @@ TEST_CASE("gsc and doa process API & cpu loading", "[gsc_doa]")
 
     esp_gsc_destroy(gsc);
     esp_doa_capon_embedded_destroy(doa);
-    heap_caps_free(mem_pool);
     heap_caps_free(planar);
-    heap_caps_free(inter);
     heap_caps_free(out);
 
     /* Valid angle, within one grid step (10 deg) of the true direction,

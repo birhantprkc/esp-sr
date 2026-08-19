@@ -20,8 +20,6 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_psram.h"
-#include "esp_heap_caps.h"
 #include "unity.h"
 
 #include "esp_doa_capon_embedded.h"
@@ -43,7 +41,7 @@ static PlaneCoord g_mic_coords[MIC_NUM] = {
 
 typedef struct {
     int angle_deg;
-    const int16_t *data;    /* EVAL_FRAMES frames, interleaved 4ch */
+    const int16_t *data;    /* EVAL_FRAMES frames, interleaved 4ch (converted to planar at runtime) */
 } doa_case_t;
 
 static const doa_case_t g_cases[] = {
@@ -69,6 +67,16 @@ static int angle_diff(int a, int b)
     return (d > 180) ? 360 - d : d;
 }
 
+/* Convert one interleaved frame to the planar layout the DOA API expects */
+static void deinterleave_frame(const int16_t *inter, int16_t *planar)
+{
+    for (int n = 0; n < FRAME_LEN; n++) {
+        for (int ch = 0; ch < MIC_NUM; ch++) {
+            planar[ch * FRAME_LEN + n] = inter[n * MIC_NUM + ch];
+        }
+    }
+}
+
 TEST_CASE("doa capon embedded accuracy", "[gsc_doa]")
 {
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -79,25 +87,21 @@ TEST_CASE("doa capon embedded accuracy", "[gsc_doa]")
            (int)NUM_CASES, EVAL_FRAMES);
     printf("******************************************************\n");
 
-    size_t mem_size = esp_doa_capon_embedded_get_mem_size(MIC_NUM);
-    void *mem_pool = heap_caps_malloc(mem_size, MALLOC_CAP_SPIRAM);
-    TEST_ASSERT_NOT_NULL(mem_pool);
-    printf("DOA memory pool: %u bytes (%.1f KB) in PSRAM\n\n",
-           (unsigned)mem_size, mem_size / 1024.0f);
-
     const int eval_per_case = EVAL_FRAMES - WARMUP_FRAMES;
     int total_exact = 0, total_within10 = 0;
     int invalid_angles = 0;
+    static int16_t planar_frame[FRAME_LEN * MIC_NUM];
 
     for (int c = 0; c < (int)NUM_CASES; c++) {
         esp_doa_capon_embedded_handle_t *doa =
-            esp_doa_capon_embedded_create(mem_pool, mem_size, g_mic_coords, MIC_NUM);
+            esp_doa_capon_embedded_create(g_mic_coords, MIC_NUM);
         TEST_ASSERT_NOT_NULL(doa);
 
         int exact = 0, within10 = 0;
         for (int f = 0; f < EVAL_FRAMES; f++) {
             const int16_t *frame = g_cases[c].data + f * FRAME_LEN * MIC_NUM;
-            float raw = esp_doa_capon_embedded_process(doa, (int16_t *)frame, 1);
+            deinterleave_frame(frame, planar_frame);
+            float raw = esp_doa_capon_embedded_process(doa, planar_frame, 1);
             if (!(raw >= 0.0f && raw < 360.0f)) {
                 invalid_angles++;
             }
@@ -127,8 +131,6 @@ TEST_CASE("doa capon embedded accuracy", "[gsc_doa]")
     printf("  within 10 deg: %d/%d (%.1f%%)\n",
            total_within10, total, 100.0f * total_within10 / total);
     printf("======================================================\n");
-
-    heap_caps_free(mem_pool);
 
     /* The estimated angle must always be a valid direction in [0, 360) */
     TEST_ASSERT_EQUAL(0, invalid_angles);
