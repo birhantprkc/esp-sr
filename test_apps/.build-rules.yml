@@ -22,3 +22,8 @@ test_apps/esp-tts:
   enable:
     - if: IDF_TARGET in ["esp32s3", "esp32", "esp32p4"]
       temporary: false
+
+test_apps/esp-sr-gsc-doa:
+  enable:
+    - if: IDF_TARGET in ["esp32p4"]
+      temporary: false
