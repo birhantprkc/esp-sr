@@ -22,6 +22,11 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
 
+# Bootloader exceeds the 0x6000 size limit at partition offset 0x8000 on esp32p4,
+# so build it size-optimized and strip its logging output
+CONFIG_BOOTLOADER_COMPILER_OPTIMIZATION_SIZE=y
+CONFIG_BOOTLOADER_LOG_LEVEL_NONE=y
+
 # Enable float printf
 CONFIG_NEWLIB_NANO_FORMAT=n
 
