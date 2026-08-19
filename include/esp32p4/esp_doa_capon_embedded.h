@@ -20,6 +20,15 @@
 
 #include "gsc_core_types.h"
 
+/* Memory placement:
+ * - The DOA internal buffers (memory pool, ~200KB for 4 mics) are allocated
+ *   in PSRAM by default. To place them in internal RAM instead, define
+ *   ESP_DOA_DISABLE_PSRAM before including this header (or as a compile
+ *   definition of the esp_audio_processor component). */
+#ifndef ESP_DOA_DISABLE_PSRAM
+#define ESP_DOA_PSRAM_DEFAULT
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -49,17 +58,6 @@ extern "C" {
 typedef struct esp_doa_capon_embedded_handle_t esp_doa_capon_embedded_handle_t;
 
 /**
- * @brief Get the required memory size for DOA Capon Embedded
- *
- * Use this function to determine how much memory to allocate before calling
- * esp_doa_capon_embedded_create().
- *
- * @param mic_num Number of microphones (2 .. 8)
- * @return Size in bytes required for internal memory pool, 0 on invalid mic_num
- */
-size_t esp_doa_capon_embedded_get_mem_size(int mic_num);
-
-/**
  * @brief Initialize DOA Capon Embedded processor
  *
  * This function creates and initializes a DOA processor instance with the
@@ -76,22 +74,19 @@ size_t esp_doa_capon_embedded_get_mem_size(int mic_num);
  *     at mic_coord[i] (shuffling is fine as long as the pairing holds)
  *   - When chaining DOA with esp_gsc, pass the SAME coordinate array to both
  *
- * Memory must be allocated by the caller using the size returned by
- * esp_doa_capon_embedded_get_mem_size(). The memory should be allocated
- * from PSRAM for best performance (MALLOC_CAP_SPIRAM).
+ * All memory (handle + internal memory pool) is allocated by this function
+ * and released by esp_doa_capon_embedded_destroy(). Buffers are allocated
+ * from PSRAM by default (see ESP_DOA_DISABLE_PSRAM above).
  *
- * @param mem_pool  Pointer to pre-allocated memory pool
- * @param pool_size Size of the memory pool in bytes
- *                  (must be >= esp_doa_capon_embedded_get_mem_size(mic_num))
  * @param mic_coord Array of microphone coordinates (unit: meters),
  *                  right-hand coordinate system, one entry per microphone
  * @param mic_num   Number of microphones (2 .. 8)
  *
  * @return Initialized handle on success, NULL on failure
  *         Failure can occur if:
- *         - mem_pool or mic_coord is NULL
+ *         - mic_coord is NULL
  *         - mic_num is out of range
- *         - pool_size is insufficient
+ *         - memory allocation fails
  *
  * Example:
  * @code
@@ -99,22 +94,19 @@ size_t esp_doa_capon_embedded_get_mem_size(int mic_num);
  *       { 0.05f, 0.0f, 0.0f}, {0.0f,  0.05f, 0.0f},
  *       {-0.05f, 0.0f, 0.0f}, {0.0f, -0.05f, 0.0f},
  *   };
- *   size_t mem_size = esp_doa_capon_embedded_get_mem_size(4);
- *   void *mem_pool = heap_caps_malloc(mem_size, MALLOC_CAP_SPIRAM);
  *   esp_doa_capon_embedded_handle_t *doa =
- *       esp_doa_capon_embedded_create(mem_pool, mem_size, mic_coords, 4);
+ *       esp_doa_capon_embedded_create(mic_coords, 4);
  * @endcode
  */
-esp_doa_capon_embedded_handle_t *esp_doa_capon_embedded_create(void *mem_pool, size_t pool_size,
-                                                               PlaneCoord *mic_coord, int mic_num);
+esp_doa_capon_embedded_handle_t *esp_doa_capon_embedded_create(PlaneCoord *mic_coord, int mic_num);
 
 /**
  * @brief Release all allocated resources
- * 
- * This function deinitializes the DOA processor and releases all internal
- * resources. The caller is responsible for freeing the memory pool that
- * was passed to esp_doa_capon_embedded_create().
- * 
+ *
+ * This function deinitializes the DOA processor and releases all resources
+ * allocated by esp_doa_capon_embedded_create(), including the internal
+ * memory pool.
+ *
  * @param handle DOA handle instance to be freed (can be NULL, safely ignored)
  */
 void esp_doa_capon_embedded_destroy(esp_doa_capon_embedded_handle_t *handle);
@@ -126,8 +118,8 @@ void esp_doa_capon_embedded_destroy(esp_doa_capon_embedded_handle_t *handle);
  * the direction of arrival (DOA) of the sound source.
  * 
  * Input data format:
- *   - mic_num-channel 16-bit PCM audio
- *   - Interleaved layout: [ch0_s0, ch1_s0, ..., chN_s0, ch0_s1, ch1_s1, ...]
+ *   - mic_num-channel 16-bit PCM audio, planar layout
+ *   - Layout: [ch0_0..ch0_127, ch1_0..ch1_127, ...]
  *   - Frame size: 128 samples per channel (total 128 * mic_num samples)
  *   - Sample rate: 16000 Hz
  *   - Channel i must correspond to mic_coord[i] of esp_doa_capon_embedded_create()
@@ -142,7 +134,7 @@ void esp_doa_capon_embedded_destroy(esp_doa_capon_embedded_handle_t *handle);
  * pre-allocated during esp_doa_capon_embedded_create().
  * 
  * @param handle    DOA handle instance created by esp_doa_capon_embedded_create()
- * @param mic_data  mic_num-channel audio data, interleaved 16-bit PCM
+ * @param mic_data  mic_num-channel audio data, planar 16-bit PCM
  *                  Buffer size: 128 samples × mic_num channels
  * @param vad_result VAD result: 1 = speech detected, 0 = noise/silence.
  *                  When vad_result is 0, all adaptive state (covariance
@@ -162,7 +154,7 @@ void esp_doa_capon_embedded_destroy(esp_doa_capon_embedded_handle_t *handle);
  * 
  * Example:
  * @code
- *   int16_t audio_frame[128 * 4];  // 4 channels, interleaved
+ *   int16_t audio_frame[128 * 4];  // 4 channels, planar: [ch0_0..ch0_127, ch1_0..ch1_127, ...]
  *   int vad = 1;  // Speech detected
  *   float doa = esp_doa_capon_embedded_process(doa_handle, audio_frame, vad);
  *   printf("DOA: %.1f degrees\n", doa);
