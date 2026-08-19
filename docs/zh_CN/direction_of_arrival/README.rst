@@ -45,40 +45,33 @@ ESP-SR DOA（Direction of Arrival，声源定向）模块用于估计声源相�
           { 0.0f, -0.05f, 0.0f},
       };
 
-2. **查询所需内存大小并分配内存池**
+2. **创建 DOA 实例**
 
-   DOA 模块在处理过程中不做动态内存分配，需要调用方提供内存池。建议从 PSRAM 分配（``MALLOC_CAP_SPIRAM``）。
-
-   .. code-block:: c
-
-      size_t mem_size = esp_doa_capon_embedded_get_mem_size(4);
-      void *mem_pool = heap_caps_malloc(mem_size, MALLOC_CAP_SPIRAM);
-
-3. **创建 DOA 实例**
+   所有内存（句柄和内部内存池）由模块自行分配，并由 ``esp_doa_capon_embedded_destroy()`` 释放。缓冲区默认从 PSRAM 分配，参见下文 **内存配置** 一节。
 
    .. code-block:: c
 
       esp_doa_capon_embedded_handle_t *doa =
-          esp_doa_capon_embedded_create(mem_pool, mem_size, mic_coords, 4);
+          esp_doa_capon_embedded_create(mic_coords, 4);
 
-4. **处理音频帧**
+3. **处理音频帧**
 
-   输入为 ``mic_num`` 通道 16-bit PCM 音频，**交织（interleaved）** 排布（``[ch0_s0, ch1_s0, ..., chN_s0, ch0_s1, ...]``），每帧每通道 128 个采样点。
+   输入为 ``mic_num`` 通道 16-bit PCM 音频，**planar（分通道）** 排布（``[ch0_0..ch0_127, ch1_0..ch1_127, ...]``），每帧每通道 128 个采样点。
 
    .. code-block:: c
 
-      int16_t audio_frame[128 * 4];  // 4 通道，交织排布
+      int16_t audio_frame[128 * 4];  // 4 通道，planar 排布
       int vad = 1;                   // 1 = 语音，0 = 噪声/静音
       float angle = esp_doa_capon_embedded_process(doa, audio_frame, vad);
 
-   返回角度单位为度，范围 0–360，定义在阵列绝对坐标系中（0° = x 轴正方向，逆时针），与 ``mic_coord`` 中麦克风的排列顺序无关。
+   返回角度单位为度，范围 0–360，定义在阵列绝对坐标系中（0° = x 轴正方向，逆时针），与 ``mic_coord`` 中麦克风的排列顺序无关。出错时返回 ``-1.0f``。
 
    .. note::
 
       - 当 ``vad_result`` 为 0 时，所有自适应状态（协方差递推、矩阵求逆、空间谱）都会被冻结，并直接返回上一次估计的角度。建议接入 AFE 模块的 VAD 结果，避免纯噪声帧破坏估计。
       - 协方差递推需要若干帧才能收敛，创建（或复位）后最初几帧的估计结果应丢弃。
 
-5. **（可选）复位处理器状态**
+4. **（可选）复位处理器状态**
 
    复位协方差矩阵和平滑滤波器，适用于长时间静音后重新开始估计等场景：
 
@@ -86,16 +79,27 @@ ESP-SR DOA（Direction of Arrival，声源定向）模块用于估计声源相�
 
       esp_doa_capon_embedded_reset(doa);
 
-6. **释放资源**
+5. **释放资源**
+
+   ``esp_doa_capon_embedded_destroy()`` 释放 ``esp_doa_capon_embedded_create()`` 分配的全部资源（传入 NULL 会被安全忽略）：
 
    .. code-block:: c
 
       esp_doa_capon_embedded_destroy(doa);
-      heap_caps_free(mem_pool);
 
 .. warning::
 
    将 DOA 与 :doc:`GSC 波束形成 <../gsc_beamforming/README>` 级联使用时，两个模块必须传入**相同的**麦克风坐标数组，否则估计出的角度会对应错误的通道。
+
+.. tip::
+
+   ``esp_doa_capon_embedded_print_info(doa)`` 可打印处理器配置（帧长、FFT 点数、处理频带等），用于调试。
+
+内存配置
+--------
+
+- 在 ESP32-P4 上，DOA 内部缓冲区（内存池，4 麦约 200 KB）默认分配在 PSRAM 中。
+- 如需改用内部 RAM，可在包含 ``esp_doa_capon_embedded.h`` 之前定义 ``ESP_DOA_DISABLE_PSRAM``（或作为编译选项定义）。
 
 精度测试
 --------

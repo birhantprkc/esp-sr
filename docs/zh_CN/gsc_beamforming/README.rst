@@ -77,19 +77,18 @@ GSC 模块具有以下特点：
 
     /* 两个模块传入相同的坐标数组 */
     esp_doa_capon_embedded_handle_t *doa =
-        esp_doa_capon_embedded_create(mem_pool, mem_size, mic_coords, 4);
+        esp_doa_capon_embedded_create(mic_coords, 4);
     gsc_handle_t *gsc = esp_gsc_create(mic_coords, 4);
 
     while (1) {
-        /* mic_inter：交织排布的 4 通道 x 128 采样点（供 DOA）
-           mic_planar：planar 排布的 4 通道 x 128 采样点（供 GSC） */
-        float angle = esp_doa_capon_embedded_process(doa, mic_inter, vad);
+        /* mic_planar：planar 排布的 4 通道 x 128 采样点（DOA 与 GSC 共用） */
+        float angle = esp_doa_capon_embedded_process(doa, mic_planar, vad);
         esp_gsc_process(gsc, mic_planar, angle, out_data);
     }
 
 .. warning::
 
-   两个模块的输入排布不同：DOA 使用**交织（interleaved）** 多通道数据，GSC 使用 **planar** 多通道数据。两者必须使用相同的麦克风坐标数组，否则估计出的角度会对应错误的通道。
+   两个模块必须使用相同的麦克风坐标数组，否则估计出的角度会对应错误的通道。
 
 内存配置
 --------

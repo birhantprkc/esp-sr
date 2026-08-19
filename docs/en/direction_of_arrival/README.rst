@@ -45,40 +45,33 @@ The header file is :project_file:`include/esp32p4/esp_doa_capon_embedded.h`.
           { 0.0f, -0.05f, 0.0f},
       };
 
-2. **Query the required memory size and allocate the memory pool**
+2. **Create a DOA instance**
 
-   The DOA module does not allocate memory dynamically during processing; the caller must provide a memory pool. It is recommended to allocate the pool from PSRAM (``MALLOC_CAP_SPIRAM``).
-
-   .. code-block:: c
-
-      size_t mem_size = esp_doa_capon_embedded_get_mem_size(4);
-      void *mem_pool = heap_caps_malloc(mem_size, MALLOC_CAP_SPIRAM);
-
-3. **Create a DOA instance**
+   All memory (handle and internal memory pool) is allocated by the module itself and released by ``esp_doa_capon_embedded_destroy()``. Buffers are allocated from PSRAM by default; see **Memory Configuration** below.
 
    .. code-block:: c
 
       esp_doa_capon_embedded_handle_t *doa =
-          esp_doa_capon_embedded_create(mem_pool, mem_size, mic_coords, 4);
+          esp_doa_capon_embedded_create(mic_coords, 4);
 
-4. **Process audio frames**
+3. **Process audio frames**
 
-   The input is ``mic_num``-channel 16-bit PCM audio in **interleaved** layout (``[ch0_s0, ch1_s0, ..., chN_s0, ch0_s1, ...]``), 128 samples per channel per frame.
+   The input is ``mic_num``-channel 16-bit PCM audio in **planar** layout (``[ch0_0..ch0_127, ch1_0..ch1_127, ...]``), 128 samples per channel per frame.
 
    .. code-block:: c
 
-      int16_t audio_frame[128 * 4];  // 4 channels, interleaved
+      int16_t audio_frame[128 * 4];  // 4 channels, planar: [ch0_0..ch0_127, ch1_0..ch1_127, ...]
       int vad = 1;                   // 1 = speech, 0 = noise/silence
       float angle = esp_doa_capon_embedded_process(doa, audio_frame, vad);
 
-   The returned angle is in degrees, range 0–360, defined in the absolute array coordinate system (0° = positive x-axis, counter-clockwise), independent of the microphone ordering in ``mic_coord``.
+   The returned angle is in degrees, range 0–360, defined in the absolute array coordinate system (0° = positive x-axis, counter-clockwise), independent of the microphone ordering in ``mic_coord``. ``-1.0f`` is returned on error.
 
    .. note::
 
       - When ``vad_result`` is 0, all adaptive state (covariance recursion, matrix inversion, spectrum) is frozen and the last estimated angle is returned unchanged. Feeding a VAD result from the AFE module is recommended, so that noise-only frames do not corrupt the estimation.
       - The covariance recursion needs several frames to converge. Estimates from the first few frames after creation (or reset) should be discarded.
 
-5. **(Optional) Reset the processor state**
+4. **(Optional) Reset the processor state**
 
    Resets the covariance matrix and smoothing filters, e.g., after a long pause:
 
@@ -86,16 +79,27 @@ The header file is :project_file:`include/esp32p4/esp_doa_capon_embedded.h`.
 
       esp_doa_capon_embedded_reset(doa);
 
-6. **Release resources**
+5. **Release resources**
+
+   ``esp_doa_capon_embedded_destroy()`` releases all resources allocated by ``esp_doa_capon_embedded_create()`` (passing NULL is safely ignored):
 
    .. code-block:: c
 
       esp_doa_capon_embedded_destroy(doa);
-      heap_caps_free(mem_pool);
 
 .. warning::
 
    When chaining DOA with :doc:`GSC beamforming <../gsc_beamforming/README>`, pass the **same** microphone coordinate array to both modules, otherwise the estimated angle refers to the wrong channels.
+
+.. tip::
+
+   ``esp_doa_capon_embedded_print_info(doa)`` prints the processor configuration (frame size, FFT size, frequency range, etc.) for debugging.
+
+Memory Configuration
+--------------------
+
+- On ESP32-P4, the DOA internal buffers (memory pool, about 200 KB for 4 microphones) are allocated in PSRAM by default.
+- To place them in internal RAM instead, define ``ESP_DOA_DISABLE_PSRAM`` before including ``esp_doa_capon_embedded.h`` (or as a compile definition).
 
 Accuracy Evaluation
 -------------------

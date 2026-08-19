@@ -77,19 +77,18 @@ In a typical application, the DOA module estimates the speaker direction frame b
 
     /* Pass the SAME coordinate array to both modules */
     esp_doa_capon_embedded_handle_t *doa =
-        esp_doa_capon_embedded_create(mem_pool, mem_size, mic_coords, 4);
+        esp_doa_capon_embedded_create(mic_coords, 4);
     gsc_handle_t *gsc = esp_gsc_create(mic_coords, 4);
 
     while (1) {
-        /* mic_inter: interleaved 4ch x 128 samples (for DOA)
-           mic_planar: planar 4ch x 128 samples (for GSC) */
-        float angle = esp_doa_capon_embedded_process(doa, mic_inter, vad);
+        /* mic_planar: planar 4ch x 128 samples (shared by DOA and GSC) */
+        float angle = esp_doa_capon_embedded_process(doa, mic_planar, vad);
         esp_gsc_process(gsc, mic_planar, angle, out_data);
     }
 
 .. warning::
 
-   The two modules use different input layouts: DOA takes **interleaved** multi-channel data, while GSC takes **planar** multi-channel data. Both must use the same microphone coordinate array, otherwise the estimated angle refers to the wrong channels.
+   Both modules must use the same microphone coordinate array, otherwise the estimated angle refers to the wrong channels.
 
 Memory Configuration
 --------------------
