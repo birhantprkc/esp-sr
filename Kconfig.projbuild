@@ -116,6 +116,18 @@ menu "Load Multiple Wake Words (WakeNet9 or WakeNet10)"
     bool "Hey,Nova (wn10_heynova)"
     default n
 
+    config SR_WN_WN10_HIESP
+    bool "Hi,ESP (wn10_hiesp)"
+    default n
+
+    config SR_WN_WN10_ALEXA
+    bool "Alexa (wn10_alexa)"
+    default n
+
+    config SR_WN_WN10_TU2TU2NI3HAO3
+    bool "涂涂你好 (wn10_tu2tu2ni3hao3)"
+    default n
+
     config SR_WN_WN9L_JA_KONNICHIHAESP_TTS3
     bool "こんにちは ESP (wn9l_ja_konnichihaesp_tts3)"
     default n

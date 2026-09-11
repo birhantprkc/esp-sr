@@ -1,5 +1,8 @@
 # Change log for esp-sr
 
+#unreleased
+- Add wn10_hiesp and wn10_alexa
+
 # 2.5.3
 - Fix wakenet10 memory bug
 - Update docs and add more wakenet10 models
