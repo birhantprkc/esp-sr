@@ -47,11 +47,12 @@ The following wake word models have been tested:
 | Wake word | WakeNet9 | WakeNet10 |
 |:----------|:---------|:----------|
 | Hi,乐鑫 | wn9_hilexin | wn10_hilexin |
-| Hi,ESP | wn9_hiesp | |
+| Hi,ESP | wn9_hiesp | wn10_hiesp |
 | こんにちは ESP | wn9l_ja_konnichihaesp_tts3 | |
 | Bonjour ESP | wn9l_fr_bonjouresp_tts3 | |
 | 你好小智 | wn9_nihaoxiaozhi_tts | wn10_nihaoxiaozhi |
 | 小爱同学 | wn9_xiaoaitongxue | wn10_xiaoaitongxue |
+| Alexa | wn9_alexa | wn10_alexa |
 
 See the [complete list of supported wake word models](wakeword_list.md) for all models included in ESP-SR.
 
